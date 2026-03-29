@@ -1,0 +1,14 @@
+[Desktop Entry]
+Name=Zed
+Comment=Easily access Zed recent projects
+X-KDE-ServiceTypes=Plasma/Runner
+Type=Service
+Icon=zed
+X-KDE-PluginInfo-Author=algus
+X-KDE-PluginInfo-Name=krunner_zed
+X-KDE-PluginInfo-Version=0.1.0
+X-KDE-PluginInfo-License=MIT
+X-KDE-PluginInfo-EnabledByDefault=true
+X-Plasma-API=DBus
+X-Plasma-DBusRunner-Service=dev.algus.krunner_zed
+X-Plasma-DBusRunner-Path=/krunner_zed
