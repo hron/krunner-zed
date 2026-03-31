@@ -13,12 +13,9 @@ else
 	dataHome=~/.local/share
 fi
 
-# Build release binary if not already present next to this script
-if [[ ! -f "./$name" ]]; then
-	echo "Building $name..."
-	(cd .. && cargo build --release)
-	cp "../target/release/$name" "./$name"
-fi
+echo "Building $name..."
+$(cd .. && cargo build --release)
+cp "../target/release/$name" "./$name"
 
 mkdir -p ~/.local/bin
 mkdir -p "$dataHome/krunner/dbusplugins"
