@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 
 use dirs::data_local_dir;
@@ -205,10 +204,7 @@ impl ZedRunner {
         // match_id = "<exec_path>|<project_path>" where project_path may be newline-separated
         if let Some((exec, project_path)) = match_id.split_once('|') {
             let paths: Vec<&str> = project_path.split('\n').filter(|s| !s.is_empty()).collect();
-            let _ = std::process::Command::new(exec)
-                .args(&paths)
-                .process_group(0)
-                .spawn();
+            let _ = std::process::Command::new(exec).args(&paths).spawn();
         }
     }
 
