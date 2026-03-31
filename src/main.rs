@@ -123,12 +123,19 @@ fn query_projects(instance: &ZedInstance) -> Vec<(String, String)> {
 
     rows.flatten()
         .filter(|p| !p.is_empty())
-        .map(|path| {
-            let name = Path::new(&path)
-                .file_name()
-                .map(|n| n.to_string_lossy().into_owned())
-                .unwrap_or_else(|| path.clone());
-            (path, name)
+        .map(|raw| {
+            let parts: Vec<&str> = raw.split('\n').filter(|s| !s.is_empty()).collect();
+            let name = parts
+                .iter()
+                .map(|p| {
+                    Path::new(p)
+                        .file_name()
+                        .map(|n| n.to_string_lossy().into_owned())
+                        .unwrap_or_else(|| p.to_string())
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+            (raw, name)
         })
         .collect()
 }
@@ -195,9 +202,13 @@ impl ZedRunner {
     }
 
     async fn run(&self, match_id: &str, _action_id: &str) {
-        // match_id = "<exec_path>|<project_path>"
+        // match_id = "<exec_path>|<project_path>" where project_path may be newline-separated
         if let Some((exec, project_path)) = match_id.split_once('|') {
-            let _ = std::process::Command::new(exec).arg(project_path).spawn();
+            let paths: Vec<&str> = project_path.split('\n').filter(|s| !s.is_empty()).collect();
+            let _ = std::process::Command::new(exec)
+                .args(&paths)
+                .process_group(0)
+                .spawn();
         }
     }
 
