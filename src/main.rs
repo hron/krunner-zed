@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 
 use dirs::data_local_dir;
@@ -86,7 +87,12 @@ fn find_zed_instances() -> Vec<ZedInstance> {
             let db_path = db_path_for_exec(&exec);
 
             if db_path.exists() {
-                instances.push(ZedInstance { label, exec, icon, db_path });
+                instances.push(ZedInstance {
+                    label,
+                    exec,
+                    icon,
+                    db_path,
+                });
             }
         }
     }
@@ -148,7 +154,14 @@ fn match_score(query: &str, name: &str, path: &str) -> Option<f64> {
 
 // Match tuple: (id, text, iconName, type, relevance, properties)
 // type 3 = Plasma::QueryMatch::ExactMatch
-type RemoteMatch = (String, String, String, i32, f64, HashMap<String, Value<'static>>);
+type RemoteMatch = (
+    String,
+    String,
+    String,
+    i32,
+    f64,
+    HashMap<String, Value<'static>>,
+);
 
 #[interface(name = "org.kde.krunner1")]
 impl ZedRunner {
@@ -174,14 +187,7 @@ impl ZedRunner {
                 props.insert("subtext".to_string(), Value::new(path.clone()));
                 props.insert("category".to_string(), Value::new(instance.label.clone()));
 
-                results.push((
-                    match_id,
-                    name,
-                    instance.icon.clone(),
-                    3i32,
-                    score,
-                    props,
-                ));
+                results.push((match_id, name, instance.icon.clone(), 3i32, score, props));
             }
         }
 
