@@ -12,6 +12,7 @@ struct ZedRunner;
 struct ZedInstance {
     label: String,
     exec: String,
+    app_id: String,
     icon: String,
     db_path: PathBuf,
 }
@@ -83,12 +84,20 @@ fn find_zed_instances() -> Vec<ZedInstance> {
 
             let icon = de.icon().unwrap_or("zed").to_string();
 
+            // Desktop file ID: stem of the filename (e.g. "dev.zed.Zed" from "dev.zed.Zed.desktop")
+            let app_id = path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("zed")
+                .to_string();
+
             let db_path = db_path_for_exec(&exec);
 
             if db_path.exists() {
                 instances.push(ZedInstance {
                     label,
                     exec,
+                    app_id,
                     icon,
                     db_path,
                 });
@@ -120,21 +129,19 @@ fn query_projects(instance: &ZedInstance) -> Vec<(String, String)> {
         return Vec::new();
     };
 
+    let mut seen = std::collections::HashSet::new();
     rows.flatten()
         .filter(|p| !p.is_empty())
-        .map(|raw| {
-            let parts: Vec<&str> = raw.split('\n').filter(|s| !s.is_empty()).collect();
-            let name = parts
-                .iter()
-                .map(|p| {
-                    Path::new(p)
-                        .file_name()
-                        .map(|n| n.to_string_lossy().into_owned())
-                        .unwrap_or_else(|| p.to_string())
-                })
-                .collect::<Vec<_>>()
-                .join(", ");
-            (raw, name)
+        .filter_map(|raw| {
+            let first = raw.split('\n').find(|s| !s.is_empty())?.to_string();
+            if !seen.insert(first.clone()) {
+                return None;
+            }
+            let name = Path::new(&first)
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or(first);
+            Some((raw, name))
         })
         .collect()
 }
@@ -186,8 +193,8 @@ impl ZedRunner {
                     continue;
                 };
 
-                // Encode exec + path so Run knows which binary to use
-                let match_id = format!("{}|{}", instance.exec, path);
+                // Encode exec + app_id + path so Run knows which binary and desktop file to use
+                let match_id = format!("{}|{}|{}", instance.exec, instance.app_id, path);
 
                 let mut props = HashMap::new();
                 props.insert("subtext".to_string(), Value::new(path.clone()));
@@ -201,10 +208,18 @@ impl ZedRunner {
     }
 
     async fn run(&self, match_id: &str, _action_id: &str) {
-        // match_id = "<exec_path>|<project_path>" where project_path may be newline-separated
-        if let Some((exec, project_path)) = match_id.split_once('|') {
-            let paths: Vec<&str> = project_path.split('\n').filter(|s| !s.is_empty()).collect();
-            let _ = std::process::Command::new(exec).args(&paths).spawn();
+        // match_id = "<exec_path>|<app_id>|<project_path>" where project_path may be newline-separated
+        let mut parts = match_id.splitn(3, '|');
+        if let (Some(_exec), Some(app_id), Some(project_path)) =
+            (parts.next(), parts.next(), parts.next())
+        {
+            // Use the first path only; kstart --application accepts a single --url
+            if let Some(first_path) = project_path.split('\n').find(|s| !s.is_empty()) {
+                let url = format!("file://{}", first_path);
+                let _ = std::process::Command::new("kstart")
+                    .args(["--application", app_id, "--url", &url])
+                    .spawn();
+            }
         }
     }
 
