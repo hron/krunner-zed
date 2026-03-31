@@ -197,7 +197,12 @@ impl ZedRunner {
                 let match_id = format!("{}|{}|{}", instance.exec, instance.app_id, path);
 
                 let mut props = HashMap::new();
-                props.insert("subtext".to_string(), Value::new(path.clone()));
+                let display = if let Some(home) = dirs::home_dir() {
+                    path.clone().replace(home.to_str().unwrap(), "~")
+                } else {
+                    path.clone()
+                };
+                props.insert("subtext".to_string(), Value::new(display));
                 props.insert("category".to_string(), Value::new(instance.label.clone()));
 
                 results.push((match_id, name, instance.icon.clone(), 3i32, score, props));
