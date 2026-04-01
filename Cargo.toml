@@ -7,7 +7,7 @@ edition = "2024"
 zbus = "5"
 rusqlite = { version = "0.32", features = ["bundled"] }
 tokio = { version = "1", features = ["full"] }
-dirs = "5"
+dirs = "6"
 xdg = "3"
 freedesktop-desktop-entry = "0.8"
 
