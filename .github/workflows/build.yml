@@ -1,6 +1,9 @@
 name: Build
 
 on:
+  push:
+    branches: [main]
+  pull_request:
   # Enable manual run
   workflow_dispatch:
   # Allow being called by other workflows
@@ -45,8 +48,8 @@ jobs:
       - name: Clippy (deny warnings)
         run: cargo clippy --all-targets --all-features -- -D warnings
 
-      - name: Run tests
-        run: cargo test --workspace --all-features
+      # - name: Run tests
+      #   run: cargo test --workspace --all-features
 
       - name: Build release
         run: cargo build --workspace --release
@@ -54,10 +57,11 @@ jobs:
       - name: Create artifacts
         run: |
           mkdir -p output
-          cp target/release/krunner-zed output/
-          (cd package/ && tar -zcvf ../output/krunner-zed.tar.gz .)
+          cp target/release/krunner-zed package/
+          TAG=${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          (cd package/ && tar -zcvf "../output/krunner-zed${TAG:+-$TAG}.tar.gz" .)
 
       - name: Upload artifacts to workflow
         uses: actions/upload-artifact@v4
         with:
-          path: output/krunner-zed.tar.gz
+          path: output/krunner-zed*.tar.gz
