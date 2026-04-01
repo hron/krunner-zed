@@ -20,8 +20,4 @@ rm -f "$dataHome/dbus-1/services/$identifier.service"
 
 echo "Uninstalled $name."
 
-if command -v kquitapp6 &>/dev/null; then
-    kquitapp6 krunner || true
-elif command -v kquitapp5 &>/dev/null; then
-    kquitapp5 krunner || true
-fi
+kquitapp6 krunner || true
