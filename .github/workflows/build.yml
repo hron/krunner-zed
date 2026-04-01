@@ -55,9 +55,9 @@ jobs:
         run: |
           mkdir -p output
           cp target/release/krunner-zed output/
-          (cd package/ && tar -zcvf ../output/krunner-zed-${{ github.ref_name }}.tar.gz .)
+          (cd package/ && tar -zcvf ../output/krunner-zed.tar.gz .)
 
       - name: Upload artifacts to workflow
         uses: actions/upload-artifact@v4
         with:
-          path: output/krunner-zed-${{ github.ref_name }}.tar.gz
+          path: output/krunner-zed.tar.gz
