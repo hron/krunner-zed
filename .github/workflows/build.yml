@@ -42,6 +42,9 @@ jobs:
         run: |
           rustup component add clippy rustfmt --toolchain stable || true
 
+      - name: Install dbus-daemon
+        run: sudo apt-get install -y dbus
+
       - name: Format check
         run: cargo fmt --all -- --check
 
@@ -50,6 +53,9 @@ jobs:
 
       # - name: Run tests
       #   run: cargo test --workspace --all-features
+
+      - name: Run tests
+        run: cargo test --workspace --all-features
 
       - name: Build release
         run: cargo build --workspace --release
