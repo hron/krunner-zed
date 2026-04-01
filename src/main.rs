@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::future::pending;
 use std::path::{Path, PathBuf};
 
 use dirs::data_local_dir;
@@ -239,7 +240,5 @@ async fn main() -> zbus::Result<()> {
         .build()
         .await?;
 
-    loop {
-        tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
-    }
+    pending().await
 }
