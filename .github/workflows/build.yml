@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
   # Enable manual run
   workflow_dispatch:
@@ -58,7 +58,7 @@ jobs:
         run: |
           mkdir -p output
           cp target/release/krunner-zed package/
-          TAG=${{ github.ref_name }}
+          TAG=${{ github.ref_type == 'tag' && github.ref_name || '' }}
           (cd package/ && tar -zcvf "../output/krunner-zed${TAG:+-$TAG}.tar.gz" .)
 
       - name: Upload artifacts to workflow
