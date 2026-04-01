@@ -1,0 +1,63 @@
+name: Build
+
+on:
+  # Enable manual run
+  workflow_dispatch:
+  # Allow being called by other workflows
+  workflow_call:
+    inputs:
+      pre-release:
+        description: "Whether the build is for a pre-release"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build:
+    name: Build, Lint & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache cargo registry, git index and target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: linux-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Install components
+        run: |
+          rustup component add clippy rustfmt --toolchain stable || true
+
+      - name: Format check
+        run: cargo fmt --all -- --check
+
+      - name: Clippy (deny warnings)
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Run tests
+        run: cargo test --workspace --all-features
+
+      - name: Build release
+        run: cargo build --workspace --release
+
+      - name: Create artifacts
+        run: |
+          mkdir -p output
+          cp target/release/krunner-zed output/
+          (cd package/ && tar -zcvf ../output/krunner-zed.tar.gz .)
+
+      - name: Upload artifacts to workflow
+        uses: actions/upload-artifact@v4
+        with:
+          path: output/krunner-zed.tar.gz

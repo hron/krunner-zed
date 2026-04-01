@@ -18,6 +18,8 @@ struct ZedInstance {
     db_path: PathBuf,
 }
 
+const SCHEMA_HANDLER_ID: &str = "x-scheme-handler/zed";
+
 fn db_path_for_exec(exec: &str) -> PathBuf {
     let variant = if exec.to_lowercase().contains("dev") {
         "0-dev"
@@ -60,7 +62,7 @@ fn find_zed_instances() -> Vec<ZedInstance> {
             // Only consider apps that handle the zed URI scheme
             let is_zed = de
                 .mime_type()
-                .map(|types| types.iter().any(|t| *t == "x-scheme-handler/zed"))
+                .map(|types| types.contains(&SCHEMA_HANDLER_ID))
                 .unwrap_or(false);
 
             if !is_zed {

@@ -1,0 +1,42 @@
+name: Release
+
+on:
+  # Build & deploy for tag events matching v*, i.e. v1.0.0, v20.15.10
+  push:
+    tags:
+      - "v*"
+  # Enable manual run
+  workflow_dispatch:
+
+concurrency:
+  group: ci-release-${{ github.ref }}-1
+  cancel-in-progress: true
+
+jobs:
+  call-build:
+    uses: ./.github/workflows/build.yml
+    with:
+      pre-release: false
+    secrets: inherit
+
+  release:
+    name: "Release"
+    needs: call-build
+    runs-on: "ubuntu-latest"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Draft Release & Upload artifacts
+        uses: marvinpinto/action-automatic-releases@v1.2.1
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          draft: true
+          prerelease: false
+          files: |
+            artifacts/artifact/*
