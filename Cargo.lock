@@ -542,6 +542,7 @@ dependencies = [
  "dirs",
  "freedesktop-desktop-entry",
  "rusqlite",
+ "tempfile",
  "tokio",
  "xdg",
  "zbus",
