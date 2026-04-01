@@ -8,10 +8,7 @@ on:
 jobs:
   build-and-upload:
     name: Build and upload release artifacts
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -22,17 +19,18 @@ jobs:
           profile: minimal
           override: true
 
+      - name: Install Linux build requirements
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlite3-dev
+
       - name: Build release
         run: cargo build --workspace --release
 
-      - name: Package binary
+      - name: Create artifacts
         run: |
-          mkdir -p dist
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            powershell -Command "Compress-Archive -Path target\\release\\*.exe -DestinationPath dist\\${{ runner.os }}-artifact.zip"
-          else
-            zip -j dist/${{ runner.os }}-artifact.zip target/release/* || true
-          fi
+          mkdir -p output
+          (cd package/ && tar -zcvf ../output/krunner-zed-${{ github.ref_name }}.tar.gz .)
 
       - name: Create GitHub Release
         id: create_release
@@ -45,12 +43,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload release asset
+      - name: Upload release artifact
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: dist/${{ runner.os }}-artifact.zip
-          asset_name: ${{ runner.os }}-artifact.zip
-          asset_content_type: application/zip
+          asset_path: output/krunner-zed-${{ github.ref_name }}.tar.gz
+          asset_name: krunner-zed-${{ github.ref_name }}.tar.gz
+          asset_content_type: application/gzip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

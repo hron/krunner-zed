@@ -1,0 +1,39 @@
+name: Build
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      pre-release:
+        description: "Whether the build is for a pre-release"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Linux build requirements
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlite3-dev
+
+      - name: Build
+        run: |
+          cargo fetch
+          cargo build --release
+
+      - name: Create artifacts
+        run: |
+          mkdir -p output
+          # Ensure package/ contains the install scripts and desktop files
+          (cd package/ && tar -zcvf ../output/krunner-zed.tar.gz .)
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: output/krunner-zed.tar.gz
