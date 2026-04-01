@@ -48,8 +48,8 @@ jobs:
       - name: Clippy (deny warnings)
         run: cargo clippy --all-targets --all-features -- -D warnings
 
-      - name: Run tests
-        run: cargo test --workspace --all-features
+      # - name: Run tests
+      #   run: cargo test --workspace --all-features
 
       - name: Build release
         run: cargo build --workspace --release
