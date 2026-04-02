@@ -22,7 +22,7 @@ async fn wait_for_file(path: &std::path::Path) -> String {
 }
 
 #[tokio::test]
-async fn fallback_then_kstart() {
+async fn run_with_and_without_kstart() {
     let td = tempdir().unwrap();
     let td_path = td.path();
 
