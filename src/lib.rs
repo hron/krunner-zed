@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use tokio::sync::Mutex;
 
 use dirs::data_local_dir;
 use freedesktop_desktop_entry::DesktopEntry;
 use rusqlite::{Connection, OpenFlags};
 use zbus::{interface, zvariant::Value};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ZedInstance {
     pub label: String,
     pub exec: String,
@@ -28,7 +29,12 @@ pub fn db_path_for_exec(exec: &str) -> PathBuf {
         .join(format!("zed/db/{}/db.sqlite", variant))
 }
 
-pub fn find_zed_instances() -> Vec<ZedInstance> {
+static ZED_INSTANCES_CACHE: Mutex<Option<Vec<ZedInstance>>> = Mutex::const_new(None);
+
+pub async fn find_zed_instances() -> Vec<ZedInstance> {
+    if let Some(cached) = ZED_INSTANCES_CACHE.lock().await.as_ref() {
+        return cached.clone();
+    }
     let xdg = xdg::BaseDirectories::new();
 
     // Collect all application dirs: data_home + data_dirs
@@ -108,6 +114,8 @@ pub fn find_zed_instances() -> Vec<ZedInstance> {
     // Deduplicate by db_path: prefer earlier XDG entries (user-local over system)
     let mut seen_dbs = std::collections::HashSet::new();
     instances.retain(|i| seen_dbs.insert(i.db_path.clone()));
+
+    ZED_INSTANCES_CACHE.lock().await.replace(instances.clone());
     instances
 }
 
@@ -186,11 +194,10 @@ impl ZedRunner {
 
     #[zbus(name = "Match")]
     pub async fn match_query(&self, query: &str) -> Vec<RemoteMatch> {
-        let instances = find_zed_instances();
         let mut results = Vec::new();
 
-        for instance in &instances {
-            for (path, name) in query_projects(instance) {
+        for instance in find_zed_instances().await {
+            for (path, name) in query_projects(&instance) {
                 let Some(score) = match_score(query, &name, &path) else {
                     continue;
                 };
