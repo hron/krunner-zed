@@ -1,12 +1,13 @@
 name: Release
 
 on:
-  # Build & deploy for tag events matching v*, i.e. v1.0.0, v20.15.10
   push:
     tags:
       - "v*"
-  # Enable manual run
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 concurrency:
   group: ci-release-${{ github.ref }}-1
@@ -22,8 +23,7 @@ jobs:
   release:
     name: "Release"
     needs: call-build
-    runs-on: "ubuntu-latest"
-
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
 
