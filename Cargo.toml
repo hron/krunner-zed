@@ -2,6 +2,7 @@
 name = "krunner-zed"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
 
 [dependencies]
 zbus = "5"
