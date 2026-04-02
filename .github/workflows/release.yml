@@ -39,4 +39,4 @@ jobs:
           draft: true
           prerelease: false
           files: |
-            artifacts/artifact/*
+            artifacts/*
