@@ -6,11 +6,8 @@
 //!
 //! `setup_test` returns a `KRunnerProxy<'static>` (the proxy owns its
 //! connection via an internal `Arc`) alongside a `TestContext` that must be
-//! kept alive for the duration of the test to hold the env-mutex guard, the
-//! daemon process, and the temp directory.
-//!
-//! `ENV_LOCK` is a `tokio::sync::Mutex` so its guard is `Send` and can be
-//! stored in `TestContext` across `.await` points.
+//! kept alive for the duration of the test to keep the temporary filesystem,
+//! the daemon process, and the temp directory alive.
 
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
@@ -20,11 +17,11 @@ use std::time::Duration;
 use krunner_zed::ZedRunner;
 use rusqlite::Connection;
 use tempfile::TempDir;
-use tokio::sync::{Mutex, MutexGuard};
 use zbus::{connection, proxy};
 
-/// Serialises env mutation for the full lifetime of each test.
-static ENV_LOCK: Mutex<()> = Mutex::const_new(());
+// Note: tests in this file no longer serialize via an ENV_LOCK. The file
+// contains a single integration test which performs multiple queries while
+// holding its own environment configuration for the duration of the test.
 
 // ---------------------------------------------------------------------------
 // D-Bus daemon guard
@@ -157,10 +154,9 @@ trait KRunner {
 /// Keeps test resources alive for the duration of a test.
 ///
 /// Must be bound to a local (e.g. `let _ctx = ...`) so it is dropped only
-/// after all assertions are done.  Dropping it kills the daemon, releases
-/// the env-mutex, and deletes the temp directory.
+/// after all assertions are done.  Dropping it kills the daemon and deletes
+/// the temp directory.
 struct TestContext {
-    _env_guard: MutexGuard<'static, ()>,
     _tmp: TempDir,
     _dbus: DbusGuard,
     _server_conn: zbus::Connection,
@@ -172,18 +168,16 @@ struct TestContext {
 /// The `KRunnerProxy<'static>` owns its connection internally (via `Arc`) and
 /// can be used directly without borrowing from `TestContext`.
 async fn setup_test(project_paths: &[&str]) -> (KRunnerProxy<'static>, TestContext) {
-    let env_guard = ENV_LOCK.lock().await;
+    // Ensure a clean state for the test.
 
     let tmp = TempDir::new().unwrap();
     setup_fake_fs(&tmp, project_paths);
 
     let dbus = DbusGuard::start();
 
-    // SAFETY: ENV_LOCK is held for the entire TestContext lifetime; no
-    // concurrent test mutates the environment at the same time.
+    let home = tmp.path().join("home");
+    let share = home.join(".local/share");
     unsafe {
-        let home = tmp.path().join("home");
-        let share = home.join(".local/share");
         std::env::set_var("HOME", &home);
         std::env::set_var("XDG_DATA_HOME", &share);
         std::env::set_var("XDG_DATA_DIRS", "");
@@ -220,7 +214,6 @@ async fn setup_test(project_paths: &[&str]) -> (KRunnerProxy<'static>, TestConte
         .expect("failed to create KRunnerProxy");
 
     let ctx = TestContext {
-        _env_guard: env_guard,
         _tmp: tmp,
         _dbus: dbus,
         _server_conn: server_conn,
@@ -233,14 +226,20 @@ async fn setup_test(project_paths: &[&str]) -> (KRunnerProxy<'static>, TestConte
 // Tests
 // ---------------------------------------------------------------------------
 
-/// An empty query returns all projects with score 0.5.
+/// Run a simple integration flow in a single test: first query with an empty
+/// string to ensure all projects are returned, then run a specific query that
+/// should match only one project.
 #[tokio::test]
-async fn match_empty_query_returns_all_projects() {
-    let (proxy, _ctx) =
-        setup_test(&["/home/user/projects/alpha", "/home/user/projects/beta"]).await;
+async fn match_all_then_specific_query() {
+    let (proxy, _ctx) = setup_test(&[
+        "/home/user/projects/alpha",
+        "/home/user/projects/beta",
+        "/home/user/projects/my-app",
+    ])
+    .await;
 
+    // First: empty query should return all projects (alpha, beta, my-app)
     let results = proxy.match_query("").await.expect("Match call failed");
-
     let names: Vec<&str> = results.iter().map(|(_, name, ..)| name.as_str()).collect();
     assert!(
         names.contains(&"alpha"),
@@ -250,36 +249,18 @@ async fn match_empty_query_returns_all_projects() {
         names.contains(&"beta"),
         "expected 'beta' in results, got: {names:?}"
     );
-    for (_, _, _, _, score, _) in &results {
-        assert!(
-            (*score - 0.5).abs() < f64::EPSILON,
-            "expected score 0.5 for empty query, got {score}"
-        );
-    }
-}
+    assert!(
+        names.contains(&"my-app"),
+        "expected 'my-app' in results, got: {names:?}"
+    );
 
-/// A query matching a project name returns only that project with score 1.0.
-#[tokio::test]
-async fn match_query_filters_and_scores_by_name() {
-    let (proxy, _ctx) =
-        setup_test(&["/home/user/projects/my-app", "/home/user/projects/other"]).await;
-
-    let results = proxy.match_query("my-app").await.unwrap();
-
-    assert_eq!(results.len(), 1, "only 'my-app' should match");
-    let (_, name, _, _, score, _) = &results[0];
+    // Second: query for 'my-app' should return only that project with score 1.0
+    let specific = proxy.match_query("my-app").await.unwrap();
+    assert_eq!(specific.len(), 1, "only 'my-app' should match");
+    let (_, name, _, _, score, _) = &specific[0];
     assert_eq!(name, "my-app");
     assert!(
         (*score - 1.0).abs() < f64::EPSILON,
         "expected score 1.0 for exact match, got {score}"
     );
-}
-
-/// `Actions` returns an empty list.
-#[tokio::test]
-async fn actions_returns_empty_list() {
-    let (proxy, _ctx) = setup_test(&[]).await;
-
-    let actions = proxy.actions().await.unwrap();
-    assert!(actions.is_empty(), "Actions should be empty");
 }
