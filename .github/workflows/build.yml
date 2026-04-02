@@ -64,10 +64,9 @@ jobs:
         run: |
           mkdir -p output
           cp target/release/krunner-zed package/
-          TAG=${{ github.ref_type == 'tag' && github.ref_name || '' }}
-          (cd package/ && tar -zcvf "../output/krunner-zed${TAG:+-$TAG}.tar.gz" .)
+          (cd package/ && tar -zcvf "../output/krunner-zed.tar.gz" .)
 
       - name: Upload artifacts to workflow
         uses: actions/upload-artifact@v7
         with:
-          path: output/krunner-zed*.tar.gz
+          path: output/krunner-zed.tar.gz
