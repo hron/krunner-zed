@@ -1,3 +1,7 @@
+[![Build Status](https://img.shields.io/github/actions/workflow/status/hron/krunner-zed/build.yml?label=Rust%20Build&logo=github&branch=main)](https://github.com/hron/krunner-zed/actions)
+[![AUR](https://img.shields.io/aur/version/krunner-zed?logo=archlinux)](https://aur.archlinux.org/packages/krunner-zed)
+[![KDE Store](https://img.shields.io/badge/KDE%20Store-Visit-blue?logo=kde&style=flat-square)](https://store.kde.org/p/2354408)
+
 A KRunner plugin / "runner" that lists Zed's recent workspaces
 
 - Quickly re-open the workspace in Zed by pressing `Enter`
