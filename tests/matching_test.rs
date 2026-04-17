@@ -108,9 +108,11 @@ fn setup_fake_fs(base: &TempDir, project_paths: &[&str]) -> PathBuf {
     .unwrap();
 
     for (i, path) in project_paths.iter().enumerate() {
+        let true_path = format!("{}{}", base.path().to_str().unwrap(), path);
+        std::fs::create_dir_all(&true_path).unwrap();
         conn.execute(
             "INSERT INTO workspaces (paths, timestamp) VALUES (?1, ?2)",
-            rusqlite::params![path, i as i64],
+            rusqlite::params![&true_path, i as i64],
         )
         .unwrap();
     }
