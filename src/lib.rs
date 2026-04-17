@@ -145,6 +145,10 @@ pub fn query_projects(instance: &ZedInstance) -> Vec<(String, String)> {
             if !seen.insert(first.clone()) {
                 return None;
             }
+            let first_path = Path::new(&first);
+            if first_path.exists() && !first_path.is_dir() {
+                return None;
+            }
             let name = Path::new(&first)
                 .file_name()
                 .map(|n| n.to_string_lossy().into_owned())
