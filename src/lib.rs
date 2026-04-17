@@ -146,7 +146,7 @@ pub fn query_projects(instance: &ZedInstance) -> Vec<(String, String)> {
                 return None;
             }
             let first_path = Path::new(&first);
-            if first_path.exists() && !first_path.is_dir() {
+            if !first_path.is_dir() {
                 return None;
             }
             let name = Path::new(&first)
