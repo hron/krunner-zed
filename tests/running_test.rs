@@ -48,8 +48,8 @@ async fn run_with_and_without_kstart() {
 
     let got_exec = wait_for_file(&exec_out).await;
     assert!(
-        got_exec.contains("/tmp/some/project"),
-        "fallback exec should receive the path, got: {:?}",
+        got_exec.contains("--new") && got_exec.contains("/tmp/some/project"),
+        "fallback exec should receive --new and the path, got: {:?}",
         got_exec
     );
 
@@ -70,10 +70,10 @@ async fn run_with_and_without_kstart() {
 
     let got_kstart = wait_for_file(&kstart_out).await;
     assert!(
-        got_kstart.contains("--application"),
-        "kstart should be invoked with --application, got: {:?}",
+        got_kstart.contains("--") && got_kstart.contains("--new"),
+        "kstart should be invoked with -- and --new, got: {:?}",
         got_kstart
     );
-    assert!(got_kstart.contains("com.example.Zed"));
-    assert!(got_kstart.contains("file:///tmp/some/project"));
+    assert!(got_kstart.contains("zed-fake"));
+    assert!(got_kstart.contains("/tmp/some/project"));
 }

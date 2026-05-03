@@ -228,22 +228,21 @@ impl ZedRunner {
     pub async fn run(&self, match_id: &str, _action_id: &str) {
         // match_id = "<exec_path>|<app_id>|<project_path>" where project_path may be newline-separated
         let mut parts = match_id.splitn(3, '|');
-        if let (Some(exec), Some(app_id), Some(project_path)) =
+        if let (Some(exec), Some(_app_id), Some(project_path)) =
             (parts.next(), parts.next(), parts.next())
         {
-            // Use the first path only; kstart --application accepts a single --url
+            // Use the first path only; launch via kstart with the editor exec.
+            // If kstart is not found, fall back to launching the exec directly.
             if let Some(first_path) = project_path.split('\n').find(|s| !s.is_empty()) {
-                let url = format!("file://{}", first_path);
-
-                // Try to spawn kstart first. If kstart is not found, fall back to
-                // launching the exec binary directly.
                 match std::process::Command::new("kstart")
-                    .args(["--application", app_id, "--url", &url])
+                    .args(["--", exec, "--new", first_path])
                     .spawn()
                 {
                     Ok(_) => {}
                     Err(_) => {
-                        let _ = std::process::Command::new(exec).arg(first_path).spawn();
+                        let _ = std::process::Command::new(exec)
+                            .args(["--new", first_path])
+                            .spawn();
                     }
                 }
             }
