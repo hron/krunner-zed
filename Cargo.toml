@@ -1,5 +1,8 @@
 [package]
 name = "krunner-zed"
+description = "krunner plugin for Zed"
+homepage = "https://github.com/hron/krunner-zed"
+repository = "https://github.com/hron/krunner-zed"
 version = "0.1.2"
 edition = "2024"
 license = "MIT"
