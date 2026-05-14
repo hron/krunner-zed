@@ -68,7 +68,7 @@ impl Drop for DbusGuard {
 // ---------------------------------------------------------------------------
 
 /// Creates the directory tree expected by `find_zed_instances` and
-/// `db_path_for_exec` inside `base`:
+/// `db_path_for_channel` inside `base`:
 ///
 /// ```text
 /// <base>/
