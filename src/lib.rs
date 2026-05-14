@@ -7,27 +7,61 @@ use freedesktop_desktop_entry::DesktopEntry;
 use rusqlite::{Connection, OpenFlags};
 use zbus::{interface, zvariant::Value};
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ZedChannel {
+    Stable,
+    Nightly,
+    Preview,
+    Dev,
+}
+
+pub fn channel_from_desktop(name: &str, exec: &str) -> ZedChannel {
+    let name_lower = name.to_lowercase();
+    if name_lower.contains("nightly") {
+        return ZedChannel::Nightly;
+    }
+    if name_lower.contains("preview") {
+        return ZedChannel::Preview;
+    }
+    if name_lower.contains("dev") {
+        return ZedChannel::Dev;
+    }
+    let exec_lower = exec.to_lowercase();
+    if exec_lower.contains("nightly") {
+        return ZedChannel::Nightly;
+    }
+    if exec_lower.contains("preview") {
+        return ZedChannel::Preview;
+    }
+    if exec_lower.contains("dev") {
+        return ZedChannel::Dev;
+    }
+    ZedChannel::Stable
+}
+
+pub fn db_path_for_channel(channel: &ZedChannel) -> PathBuf {
+    let variant = match channel {
+        ZedChannel::Stable => "0-stable",
+        ZedChannel::Nightly => "0-nightly",
+        ZedChannel::Preview => "0-preview",
+        ZedChannel::Dev => "0-dev",
+    };
+    data_local_dir()
+        .unwrap_or_else(|| PathBuf::from("~/.local/share"))
+        .join(format!("zed/db/{}/db.sqlite", variant))
+}
+
 #[derive(Debug, Clone)]
 pub struct ZedInstance {
     pub label: String,
     pub exec: String,
     pub app_id: String,
     pub icon: String,
+    pub channel: ZedChannel,
     pub db_path: PathBuf,
 }
 
 pub const SCHEMA_HANDLER_ID: &str = "x-scheme-handler/zed";
-
-pub fn db_path_for_exec(exec: &str) -> PathBuf {
-    let variant = if exec.to_lowercase().contains("dev") {
-        "0-dev"
-    } else {
-        "0-stable"
-    };
-    data_local_dir()
-        .unwrap_or_else(|| PathBuf::from("~/.local/share"))
-        .join(format!("zed/db/{}/db.sqlite", variant))
-}
 
 static ZED_INSTANCES_CACHE: Mutex<Option<Vec<ZedInstance>>> = Mutex::const_new(None);
 
@@ -97,7 +131,8 @@ pub async fn find_zed_instances() -> Vec<ZedInstance> {
                 .unwrap_or("zed")
                 .to_string();
 
-            let db_path = db_path_for_exec(&exec);
+            let channel = channel_from_desktop(&label, &exec);
+            let db_path = db_path_for_channel(&channel);
 
             if db_path.exists() {
                 instances.push(ZedInstance {
@@ -105,6 +140,7 @@ pub async fn find_zed_instances() -> Vec<ZedInstance> {
                     exec,
                     app_id,
                     icon,
+                    channel,
                     db_path,
                 });
             }
