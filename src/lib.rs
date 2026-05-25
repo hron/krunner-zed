@@ -177,19 +177,36 @@ pub fn query_projects(instance: &ZedInstance) -> Vec<(String, String)> {
     rows.flatten()
         .filter(|p| !p.is_empty())
         .filter_map(|raw| {
-            let first = raw.split('\n').find(|s| !s.is_empty())?.to_string();
-            if !seen.insert(first.clone()) {
+            let paths: Vec<String> = raw
+                .split('\n')
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string())
+                .collect();
+            if paths.is_empty() {
                 return None;
             }
-            let first_path = Path::new(&first);
-            if !first_path.is_dir() {
+            let valid_paths: Vec<String> = paths
+                .into_iter()
+                .filter(|p| Path::new(p).exists())
+                .collect();
+            if valid_paths.is_empty() {
                 return None;
             }
-            let name = Path::new(&first)
-                .file_name()
-                .map(|n| n.to_string_lossy().into_owned())
-                .unwrap_or(first);
-            Some((raw, name))
+            let joined_paths = valid_paths.join("\n");
+            if !seen.insert(joined_paths.clone()) {
+                return None;
+            }
+            let names: Vec<String> = valid_paths
+                .iter()
+                .map(|p| {
+                    Path::new(p)
+                        .file_name()
+                        .map(|n| n.to_string_lossy().into_owned())
+                        .unwrap_or_else(|| p.clone())
+                })
+                .collect();
+            let name = names.join(", ");
+            Some((joined_paths, name))
         })
         .collect()
 }
@@ -251,6 +268,7 @@ impl ZedRunner {
                 } else {
                     path.clone()
                 };
+                let display = display.replace('\n', ", ");
                 props.insert("subtext".to_string(), Value::new(display));
                 props.insert("category".to_string(), Value::new(instance.label.clone()));
 
@@ -267,18 +285,26 @@ impl ZedRunner {
         if let (Some(exec), Some(_app_id), Some(project_path)) =
             (parts.next(), parts.next(), parts.next())
         {
-            // Use the first path only; launch via kstart with the editor exec.
-            // If kstart is not found, fall back to launching the exec directly.
-            if let Some(first_path) = project_path.split('\n').find(|s| !s.is_empty()) {
+            // Filter to only keep non-file paths (directories or non-existent paths) when starting Zed
+            let paths: Vec<&str> = project_path
+                .split('\n')
+                .filter(|s| !s.is_empty() && !Path::new(s).is_file())
+                .collect();
+
+            if !paths.is_empty() {
+                let mut kstart_args = vec!["--", exec, "--new"];
+                kstart_args.extend(paths.iter().copied());
+
                 match std::process::Command::new("kstart")
-                    .args(["--", exec, "--new", first_path])
+                    .args(&kstart_args)
                     .spawn()
                 {
                     Ok(_) => {}
                     Err(_) => {
-                        let _ = std::process::Command::new(exec)
-                            .args(["--new", first_path])
-                            .spawn();
+                        let mut exec_args = vec!["--new"];
+                        exec_args.extend(paths.iter().copied());
+
+                        let _ = std::process::Command::new(exec).args(&exec_args).spawn();
                     }
                 }
             }
