@@ -20,7 +20,7 @@ jobs:
     name: Build, Lint & Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Cache cargo registry, git index and target
         uses: actions/cache@v5
